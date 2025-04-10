@@ -54,13 +54,24 @@ for film_roll in $(sqlite3 "${dt_dir}/library.db" "SELECT id,folder FROM film_ro
             basename=$(basename ${zero_file})       # only filename
         fi
 
-        query="DELETE FROM images WHERE film_id=${roll_id} AND filename='${basename}'"
-        if [ .$dry_run = .'1' ]; then
-            echo -e "\tDry run: ${query}\n"
+        #finds the id
+        query1="SELECT id FROM images WHERE film_id=${roll_id} AND filename='${basename}'"
+        image_id=$(sqlite3 ${dt_dir}/library.db "${query1}" | tr -d '\n')
+
+        if [ ${#image_id} = 0 ]; then
+            echo -e "\t\tNo ID found.\n"
         else
-            sqlite3 ${dt_dir}/library.db "${query}"
-            rm -f "${zero_file}"
+
+            query2="DELETE FROM tagged_images WHERE imgid=${image_id}"
+            query3="DELETE FROM images WHERE film_id=${roll_id} AND filename='${basename}'"
+            if [ .$dry_run = .'1' ]; then
+                echo -e "\tDry run:\n\t\t${query2}\n\t\t${query3}\n"
+            else
+                sqlite3 ${dt_dir}/library.db "${query3}"
+                sqlite3 ${dt_dir}/library.db "${query2}"
+            fi
         fi
+        rm -f "${zero_file}"
     done
 done
 IFS=${OLD_IFS}
